@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection: only the user can read/write their own profile; admins/editors can read
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // app can fetch user profiles, adjust if needed
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false; // don't allow deletion via client
+    }
+
+    // Sections: only authenticated users can read; only editors can write/delete
+    match /sections/{sectionId} {
+      allow read: if true;
+      allow create, update, delete: if isEditor();
+    }
+
+    // News collection
+    match /news/{newsId} {
+      allow read: if resource.data.status == 'published' || (request.auth != null && request.auth.uid == resource.data.authorId) || isEditor();
+
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
+
+      allow update: if request.auth != null && (
+        // author can edit only while in editing/finished state
+        (request.auth.uid == resource.data.authorId && resource.data.status in ['editing','finished'])
+        // editors can update any
+        || isEditor()
+      );
+
+      allow delete: if isEditor();
+    }
+
+    function isEditor() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'editor';
+    }
+  }
+}

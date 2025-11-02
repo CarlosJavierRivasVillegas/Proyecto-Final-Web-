@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 // Tu configuración de Firebase
 const firebaseConfig = {
@@ -16,9 +15,14 @@ const firebaseConfig = {
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 
-// Obtener servicios
+// Obtener servicios (storage se carga dinámicamente para reducir bundle)
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+
+// Devuelve la instancia de Storage sólo cuando se necesite (import dinámico)
+export async function getStorageInstance() {
+  const mod = await import('firebase/storage');
+  return mod.getStorage(app);
+}
 
 export default app;
